@@ -1,0 +1,17 @@
+[project]
+name = "factoryflow-data-platform"
+version = "0.1.0"
+description = "Portfolio industrial batch data platform: synthetic ingestion, dbt transformations, data quality, anomaly detection, and Airflow orchestration."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

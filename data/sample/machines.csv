@@ -1,0 +1,6 @@
+machine_id,machine_name,machine_type,install_date
+M001,Cnc Mill 1,cnc_mill,2021-08-02
+M002,Welding Robot 2,welding_robot,2018-08-17
+M003,Assembly Line 3,assembly_line,2018-02-21
+M004,Packaging Unit 4,packaging_unit,2022-02-27
+M005,Stamping Press 5,stamping_press,2019-07-18

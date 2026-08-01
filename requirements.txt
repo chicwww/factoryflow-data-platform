@@ -1,0 +1,7 @@
+# Phase 1 (initialization) dependencies only.
+# Additional pinned dependencies (pandas, faker, psycopg2, dbt-postgres, etc.)
+# will be added in later phases, each version verified against official docs
+# before being pinned here.
+
+pytest==8.3.4
+ruff==0.9.4
