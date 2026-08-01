@@ -6,6 +6,7 @@ checks, anomaly detection, orchestration, and a monitoring dashboard.
 
 > Status: Phase 1 complete (synthetic generator + reproducibility tests). Ingestion, dbt, Airflow, anomaly detection, and dashboard land in later phases.
 > No part of this project is described as "production-ready"; see [Limitations](#limitations).
+> > Status: Phase 2 complete (synthetic generator + idempotent PostgreSQL ingestion with quarantine).
 
 ## Context
 
@@ -60,6 +61,7 @@ make start                          # start local PostgreSQL (Airflow added in P
 python scripts/generate_sample_data.py   # (re)generate data/sample/*.csv, seed=42
 make test                           # run the test suite
 make stop                           # stop local services
+python scripts/ingest_sample_data.py      # apply schema + ingest into PostgreSQL (idempotent)
 ```
 
 *(Ingestion, dbt, and orchestration commands will be added as those phases land.)*
