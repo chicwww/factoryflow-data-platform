@@ -1,0 +1,12 @@
+factoryflow:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | as_number }}"
+      user: "{{ env_var('POSTGRES_USER', 'factoryflow') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'change_me_locally') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'factoryflow') }}"
+      schema: public
+      threads: 4

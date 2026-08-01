@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: int_production_enriched
+    description: >
+      One row per production event, enriched with machine type and its quality
+      check result. A small number of events have more than one quality check
+      (duplicate resends can trigger a duplicate downstream check); this model
+      keeps the most recent one and sets has_duplicate_quality_checks so the
+      fact isn't silently lost.
+    columns:
+      - name: event_id
+        tests:
+          - unique
+          - not_null
+
+  - name: int_daily_machine_summary
+    description: One row per machine per day, aggregating volume, quality checks, and unit inconsistencies.
+    columns:
+      - name: machine_day_key
+        description: Surrogate key (machine_id + production_date).
+        tests:
+          - unique
+          - not_null
+      - name: machine_id
+        tests:
+          - not_null
+      - name: total_quantity
+        tests:
+          - not_null

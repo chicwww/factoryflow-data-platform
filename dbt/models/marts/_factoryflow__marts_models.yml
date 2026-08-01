@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: mart_production_daily
+    description: >
+      One row per machine per day. Feeds the freshness/volume/defect-rate
+      views of the Streamlit dashboard (Phase 6). defect_rate is null when
+      no quality checks exist for that machine-day, not 0 — the two are not
+      the same thing.
+    columns:
+      - name: production_day_id
+        tests:
+          - unique
+          - not_null
+      - name: machine_id
+        tests:
+          - not_null
+
+  - name: mart_quality_summary
+    description: One row per product code, aggregating pass/fail counts and defect rate.
+    columns:
+      - name: product_code
+        tests:
+          - unique
+          - not_null
+      - name: defect_rate
+        description: Null when total_checks is 0 — never silently treated as 0.
+
+  - name: mart_machine_downtime
+    description: One row per machine, aggregating maintenance event count and total downtime hours.
+    columns:
+      - name: machine_id
+        tests:
+          - unique
+          - not_null

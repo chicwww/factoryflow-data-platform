@@ -1,0 +1,78 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Raw tables loaded by the ingestion layer. Rows here have already passed
+      foreign-key and timestamp validation at ingestion time — invalid rows
+      were routed to raw.quarantine instead.
+    schema: raw
+    tables:
+      - name: machines
+        description: One row per factory machine.
+        columns:
+          - name: machine_id
+            description: Natural key for a machine.
+            tests:
+              - unique
+              - not_null
+          - name: machine_type
+            tests:
+              - not_null
+
+      - name: production_events
+        description: One row per production event reported by a machine.
+        columns:
+          - name: event_id
+            description: Natural key for a production event.
+            tests:
+              - unique
+              - not_null
+          - name: machine_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw', 'machines')
+                    field: machine_id
+          - name: unit
+            description: Unit of measurement for quantity_produced. Sometimes logged inconsistently (units vs kg) — a known data quality issue handled downstream.
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: ["units", "kg"]
+
+      - name: quality_checks
+        description: One row per quality control check performed on a production event.
+        columns:
+          - name: check_id
+            tests:
+              - unique
+              - not_null
+          - name: production_event_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw', 'production_events')
+                    field: event_id
+          - name: result
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: ["pass", "fail"]
+
+      - name: maintenance_events
+        description: One row per maintenance intervention on a machine.
+        columns:
+          - name: maintenance_id
+            tests:
+              - unique
+              - not_null
+          - name: machine_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw', 'machines')
+                    field: machine_id

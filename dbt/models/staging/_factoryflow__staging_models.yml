@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: stg_machines
+    description: One row per machine, lightly renamed from the raw source.
+    columns:
+      - name: machine_id
+        tests:
+          - unique
+          - not_null
+
+  - name: stg_production_events
+    description: >
+      One row per production event, with production_date derived from the
+      timestamp and has_unit_inconsistency flagging rows logged in kg instead
+      of units (a known upstream data issue, not corrected here).
+    columns:
+      - name: event_id
+        tests:
+          - unique
+          - not_null
+      - name: machine_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_machines')
+                field: machine_id
+      - name: quantity_produced
+        tests:
+          - not_null
+
+  - name: stg_quality_checks
+    description: One row per quality check, with is_missing_inspector flagging null inspector_id.
+    columns:
+      - name: check_id
+        tests:
+          - unique
+          - not_null
+      - name: production_event_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_production_events')
+                field: event_id
+
+  - name: stg_maintenance_events
+    description: One row per maintenance event, with duration_hours computed from start/end time.
+    columns:
+      - name: maintenance_id
+        tests:
+          - unique
+          - not_null
+      - name: machine_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_machines')
+                field: machine_id
+      - name: duration_hours
+        tests:
+          - not_null
