@@ -10,13 +10,13 @@ Status: Phase 1 in progress (initialization complete, generator not yet built).
 - [x] Small example dataset committed under `data/sample/` (seed=42, 3 days, 5 machines)
 - [x] Reproducibility verified: same seed → identical output, checked by 8 pytest tests (all passing)
 
-## Phase 2 — Idempotent ingestion into PostgreSQL
-- [ ] Raw tables created with primary/foreign keys
-- [ ] `ingested_at`, `source_file`, `batch_id` columns present
-- [ ] Re-running ingestion on the same file does not duplicate rows
-- [ ] Rejected rows land in a quarantine table, not silently dropped
-- [ ] Structured logging in place
-- [ ] Python tests covering ingestion logic
+## Phase 2 — Idempotent ingestion into PostgreSQL — COMPLETE
+- [x] Raw tables created with primary/foreign keys
+- [x] ingested_at, source_file, batch_id columns present
+- [x] Re-running ingestion on the same file does not duplicate rows (verified against real PostgreSQL 16, see docs/results.md)
+- [x] Rejected rows land in a quarantine table, not silently dropped
+- [x] Structured logging in place (JSON lines via log_event)
+- [x] Python tests covering ingestion logic (6 tests, all passing, against real Postgres)
 
 ## Phase 3 — dbt staging / intermediate / marts
 - [ ] Sources declared with descriptions
