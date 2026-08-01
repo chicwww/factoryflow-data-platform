@@ -1,12 +1,12 @@
 """FactoryFlow daily batch pipeline.
 
 Steps: detect or generate the day's raw data -> ingest into PostgreSQL ->
-dbt run -> dbt test -> score anomalies -> publish.
+dbt run -> dbt test -> score anomalies (baseline + IsolationForest) -> publish.
 
-Status note (kept honest on purpose): the scoring and publish steps are
-placeholders until Phase 5 (quality baseline + IsolationForest) and Phase 6
-(dashboard) land. They run and log clearly what they will do, but do not yet
-compute or publish anything real. See docs/backlog.md.
+Status note (kept honest on purpose): score_anomalies now runs the real
+Phase 5 scoring (see src/factoryflow/scoring.py) and writes to
+raw.anomaly_scores. publish_results is still a placeholder until Phase 6
+(dashboard) lands.
 """
 
 from __future__ import annotations
@@ -78,11 +78,18 @@ def ingest_to_postgres(ds: str, **context) -> dict:
         conn.close()
 
 
-def score_anomalies(**_context) -> None:
-    logger.info(
-        "score_anomalies: placeholder task. Statistical baseline + IsolationForest "
-        "land in Phase 5 (see docs/backlog.md). No scoring performed yet."
-    )
+def score_anomalies(**_context) -> dict:
+    from factoryflow.ingest import apply_schema, get_connection
+    from factoryflow.scoring import score_anomalies as run_scoring
+
+    conn = get_connection()
+    try:
+        apply_schema(conn)
+        summary = run_scoring(conn)
+        logger.info("score_anomalies_finished %s", summary)
+        return summary
+    finally:
+        conn.close()
 
 
 def publish_results(**_context) -> None:

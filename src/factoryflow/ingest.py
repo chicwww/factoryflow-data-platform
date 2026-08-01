@@ -1,3 +1,20 @@
+"""Idempotent ingestion of FactoryFlow CSV data into PostgreSQL raw tables.
+
+Design:
+  * Every row is validated in Python *before* any SQL is attempted — a bad
+    row never causes a failed INSERT, it is routed to raw.quarantine
+    instead, with a reason.
+  * Every insert uses ON CONFLICT (primary key) DO NOTHING, so re-running
+    ingestion on the same file never creates duplicates.
+  * Structured logging: every significant event is a single JSON line via
+    log_event, so logs are greppable/parseable.
+  * Critical business rule (Phase 5): quantity_produced must be a positive
+    integer, or the row is quarantined instead of inserted — backed by a
+    database-level CHECK constraint as defense in depth (see schema.sql).
+"""
+
+from __future__ import annotations
+
 import csv
 import hashlib
 import json
@@ -10,13 +27,15 @@ from pathlib import Path
 from typing import Any
 
 import psycopg2
+import psycopg2.extras
 
 logger = logging.getLogger("factoryflow.ingest")
 
-MIN_VALID_YEAR = 2000  # tout ce qui est avant est considéré comme un timestamp corrompu
+MIN_VALID_YEAR = 2000  # anything before this is treated as a corrupted timestamp
 
 
 def log_event(event: str, **fields: Any) -> None:
+    """Emit one structured (JSON) log line."""
     logger.info(json.dumps({"event": event, **fields}, default=str))
 
 
@@ -115,16 +134,28 @@ def ingest_machines(conn, rows, source_file, batch_id) -> IngestStats:
     return stats
 
 
-def ingest_production_events(conn, rows, known_machine_ids, source_file, batch_id) -> IngestStats:
+def ingest_production_events(
+    conn, rows: list[dict], known_machine_ids: set[str], source_file: str, batch_id: str
+) -> IngestStats:
     stats = IngestStats()
     for row in rows:
         ts = parse_timestamp(row.get("timestamp", ""))
+        quantity_raw = row.get("quantity_produced", "")
+        try:
+            quantity_value = int(quantity_raw)
+        except (TypeError, ValueError):
+            quantity_value = None
+
         if row.get("machine_id") not in known_machine_ids:
             reason = "unknown machine_id (foreign key would be violated)"
         elif ts is None:
             reason = "invalid or corrupted timestamp"
-        elif not row.get("quantity_produced"):
-            reason = "missing quantity_produced"
+        elif quantity_value is None:
+            reason = "missing or unparsable quantity_produced"
+        elif quantity_value <= 0:
+            # Critical quality rule: a production event cannot report zero or
+            # negative output. Sensor-glitch pattern, always quarantined.
+            reason = "physically impossible quantity_produced (<= 0)"
         else:
             reason = None
 
@@ -145,7 +176,7 @@ def ingest_production_events(conn, rows, known_machine_ids, source_file, batch_i
                 """,
                 (
                     row["event_id"], row["machine_id"], ts, row["product_code"],
-                    int(row["quantity_produced"]), row["unit"], row["shift"], source_file, batch_id,
+                    quantity_value, row["unit"], row["shift"], source_file, batch_id,
                 ),
             )
             if cur.rowcount > 0:

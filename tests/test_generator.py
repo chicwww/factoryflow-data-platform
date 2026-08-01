@@ -57,3 +57,11 @@ def test_some_events_have_wrong_unit_by_design():
     dataset = generate_dataset(seed=42, days=3, n_machines=5, events_per_day_per_machine=20)
     units = {e["unit"] for e in dataset.production_events}
     assert units == {"units", "kg"}
+
+
+def test_invalid_quantity_events_are_deterministic():
+    a = generate_dataset(seed=42, days=3, n_machines=5, events_per_day_per_machine=20)
+    b = generate_dataset(seed=42, days=3, n_machines=5, events_per_day_per_machine=20)
+    a_bad = [e["event_id"] for e in a.production_events if e["quantity_produced"] <= 0]
+    b_bad = [e["event_id"] for e in b.production_events if e["quantity_produced"] <= 0]
+    assert a_bad == b_bad

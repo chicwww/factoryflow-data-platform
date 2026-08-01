@@ -1,9 +1,43 @@
-dbt/.user.yml
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+.venv*/
+venv/
+
+# Environment
+.env
+*.local
+
+# Docker
+docker-compose.override.yml
+
+# dbt
 dbt/target/
 dbt/logs/
-.venv-dbt/
-__pycache__/
+dbt/.user.yml
+dbt_packages/
+target/
+logs/
 
-# All virtual environments (not just .venv/)
-.venv-dbt/
-.venv-airflow/
+# Airflow
+airflow/logs/
+airflow/airflow.db
+airflow/airflow.cfg
+airflow/webserver_config.py
+airflow/standalone_admin_password.txt
+
+# Data (never commit real generated data, only tracked samples)
+data/raw/
+data/processed/
+!data/sample/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml

@@ -1,6 +1,6 @@
 # Backlog — FactoryFlow Data Platform
 
-Status: Phase 1 in progress (initialization complete, generator not yet built).
+Status: Phase 5 complete (generator, ingestion, dbt, Airflow orchestration, quality rules + statistical baseline + IsolationForest scoring). Phase 6 (dashboard) and Phase 7 (CI, final docs) remain.
 
 ## Phase 1 — Initialization & synthetic data — COMPLETE
 **Acceptance criteria**
@@ -28,9 +28,8 @@ Status: Phase 1 in progress (initialization complete, generator not yet built).
 - [x] Retries and timeouts configured (2 retries, 5 min delay, 15 min execution timeout)
 - [x] DAG survives a mid-run failure without duplicating data (verified via idempotent re-run of the same date)
 
-Note: scoring and publish are intentionally placeholder tasks until Phase 5
-(statistical baseline + IsolationForest) and Phase 6 (dashboard) land — they
-run and log what they will do, but compute/publish nothing yet.
+Note: scoring now runs real logic (see Phase 5 below). publish remains a
+placeholder until Phase 6 (dashboard) lands.
 
 A real bug was found and fixed while building this phase: the synthetic
 generator reused event/check/maintenance IDs starting from 1 on every call,
@@ -39,10 +38,14 @@ and was silently treated as duplicates (data loss, not an error). Fixed with
 an id_prefix parameter (dated per DAG run); machine_id is deliberately NOT
 prefixed since machines are stable equipment referenced identically every day.
 
-## Phase 5 — Quality rules & anomaly detection
-- [ ] Statistical baseline implemented and documented before any ML model
-- [ ] IsolationForest added on top of the baseline, with explicit limitations stated
-- [ ] Quality errors block or quarantine data depending on declared severity
+## Phase 5 - Quality rules, statistical baseline, IsolationForest - COMPLETE
+- [x] Statistical baseline implemented and documented before any ML model (leave-one-out, per machine)
+- [x] IsolationForest added on top of the baseline, with explicit limitations stated (skipped below MIN_ROWS_FOR_ISOLATION_FOREST)
+- [x] Quality errors block or quarantine data depending on declared severity (critical: quantity <= 0 quarantined at ingestion + DB CHECK constraint; dbt tests: 2 new singular quality-rule tests, severity=error)
+
+Two real bugs found and fixed while building this phase:
+- The baseline originally included each day in its own mean/stddev, diluting real outliers. Fixed with leave-one-out computation.
+- The Phase 4 DAG never passed the actual run date to the generator, so every simulated day's events were timestamped 2026-01-01 regardless of the DAG's execution date. Fixed by passing start_date explicitly.
 
 ## Phase 6 — Dashboard
 - [ ] Streamlit dashboard reads only from marts (not raw tables)

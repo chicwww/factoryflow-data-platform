@@ -78,6 +78,8 @@ def generate_production_events(
 
                 unit = "units" if rng.random() > 0.05 else "kg"
                 quantity = rng.randint(50, 500)
+                if rng.random() < 0.015:
+                    quantity = rng.choice([0, -quantity])
 
                 events.append(
                     {

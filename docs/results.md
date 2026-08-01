@@ -65,3 +65,30 @@ fixed with a per-run id_prefix; re-verified afterwards:
 
 machines stayed at exactly 5 rows throughout -- confirming the fix keeps
 machine_id stable across days while making event-level IDs unique per day.
+
+## Phase 5 -- Quality rules, statistical baseline, IsolationForest
+
+Command: airflow dags test factoryflow_pipeline <date> (score_anomalies now
+runs real scoring), against local PostgreSQL 16 with 13 days of data.
+
+- dbt: 48/48 tests pass (46 from Phase 3 + 2 new quality-rule singular tests).
+- Ingestion: critical rule quarantines quantity_produced <= 0, backed by a
+  database CHECK constraint as defense in depth.
+- Scoring (real run, 70 machine-days): 3 flagged by the statistical
+  baseline, 20 flagged by IsolationForest, isolation_forest_ran: true.
+
+Two real bugs found and fixed here:
+1. The baseline included each day in its own mean/stddev, masking real
+   outliers (a 4x-normal test day scored z=2.0 before the fix). Fixed with
+   leave-one-out computation.
+2. The Phase 4 DAG never passed the actual run date to the generator, so
+   every simulated day collapsed onto the same production_date. Fixed by
+   passing start_date explicitly in generate_or_detect_file.
+
+Limitations (also documented next to the code in scoring.py):
+- Anomaly scores are illustrative signals for human review, kept in a
+  separate raw.anomaly_scores table, never blended into the dbt marts.
+- The baseline has no held-out validation period and is unstable with few
+  days per machine.
+- IsolationForest's contamination estimate is not validated against real
+  incidents.

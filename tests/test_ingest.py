@@ -99,3 +99,17 @@ def test_quarantined_rows_preserve_original_data_as_json(conn):
     assert row is not None
     assert "event_id" in row[0]
     assert "timestamp" in row[0]
+
+
+def test_zero_or_negative_quantity_is_quarantined_not_inserted(conn):
+    ingest_dataset(conn, SAMPLE_DIR, source_file="data/sample")
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM raw.quarantine WHERE table_name = 'production_events' "
+            "AND reason LIKE 'physically impossible quantity%'"
+        )
+        quarantined = cur.fetchone()[0]
+        cur.execute("SELECT count(*) FROM raw.production_events WHERE quantity_produced <= 0")
+        inserted = cur.fetchone()[0]
+    assert quarantined >= 1
+    assert inserted == 0
