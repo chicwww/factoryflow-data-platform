@@ -35,3 +35,33 @@ Command: `python scripts/ingest_sample_data.py`
 
 Test suite: `pytest tests/test_ingest.py` — 6/6 passed (real local PostgreSQL 16, database `factoryflow_test`).
 Full suite (`pytest`): 14/14 passed.
+
+## Phase 4 — Airflow orchestration
+
+Command: airflow dags test factoryflow_pipeline <date>, run for three
+consecutive dates (2026-02-01, 2026-02-02, 2026-02-03) against the same
+local PostgreSQL 16 instance.
+
+- All three DAG runs finished in state=success, each executing all 6
+  tasks in order: generate_or_detect_file -> ingest_to_postgres -> dbt_run
+  (9 models) -> dbt_test (46/46) -> score_anomalies (placeholder) ->
+  publish_results (placeholder).
+- Re-running the same date a second time: ingest_to_postgres reports
+  0 new inserts everywhere (idempotent), and generate_or_detect_file
+  detects the existing file and skips regeneration.
+
+A genuine bug was found and fixed here, not assumed in advance: the
+generator's event/check/maintenance IDs restarted from 1 on every call, so
+a second day's ~100 events collided with the first day's IDs and were
+silently discarded as duplicates during ingestion -- only 4 of ~100 events
+were actually inserted for the second day before the fix. Root-caused and
+fixed with a per-run id_prefix; re-verified afterwards:
+
+| Date | production_events inserted |
+|---|---|
+| data/sample (Phase 1-3 baseline) | 294 |
+| airflow/2026-02-01 | 96 |
+| airflow/2026-02-02 | 95 |
+
+machines stayed at exactly 5 rows throughout -- confirming the fix keeps
+machine_id stable across days while making event-level IDs unique per day.

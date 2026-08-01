@@ -3,3 +3,7 @@ dbt/target/
 dbt/logs/
 .venv-dbt/
 __pycache__/
+
+# All virtual environments (not just .venv/)
+.venv-dbt/
+.venv-airflow/

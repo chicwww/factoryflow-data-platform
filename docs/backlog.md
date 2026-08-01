@@ -23,10 +23,21 @@ Status: Phase 1 in progress (initialization complete, generator not yet built).
 - [x] At least 15 relevant dbt tests across layers (46 tests, all passing)
 - [x] dbt docs generate without errors
       
-## Phase 4 — Airflow orchestration
-- [ ] DAG covers: detect/generate file → ingest → dbt run → dbt test → scoring → publish
-- [ ] Retries and timeouts configured
-- [ ] DAG survives a mid-run failure without duplicating data
+## Phase 4 — Airflow orchestration — COMPLETE
+- [x] DAG covers: detect/generate file → ingest → dbt run → dbt test → scoring → publish
+- [x] Retries and timeouts configured (2 retries, 5 min delay, 15 min execution timeout)
+- [x] DAG survives a mid-run failure without duplicating data (verified via idempotent re-run of the same date)
+
+Note: scoring and publish are intentionally placeholder tasks until Phase 5
+(statistical baseline + IsolationForest) and Phase 6 (dashboard) land — they
+run and log what they will do, but compute/publish nothing yet.
+
+A real bug was found and fixed while building this phase: the synthetic
+generator reused event/check/maintenance IDs starting from 1 on every call,
+so a second day's batch collided with the first day's already-ingested rows
+and was silently treated as duplicates (data loss, not an error). Fixed with
+an id_prefix parameter (dated per DAG run); machine_id is deliberately NOT
+prefixed since machines are stable equipment referenced identically every day.
 
 ## Phase 5 — Quality rules & anomaly detection
 - [ ] Statistical baseline implemented and documented before any ML model

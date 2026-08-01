@@ -26,9 +26,6 @@ SHIFTS = ["morning", "afternoon", "night"]
 MAINTENANCE_TYPES = ["preventive", "corrective", "inspection"]
 DEFECT_TYPES = ["dimension", "surface_finish", "assembly", "material", None]
 
-# Two units used inconsistently on purpose: quantity is sometimes logged in
-# "units" and sometimes mistakenly in "kg" for the same product line, which
-# downstream quality checks must catch.
 UNITS = ["units", "kg"]
 
 
@@ -64,6 +61,7 @@ def generate_production_events(
     start_date: datetime,
     days: int,
     events_per_day_per_machine: int,
+    id_prefix: str = "",
 ) -> list[dict]:
     events = []
     event_counter = 1
@@ -75,17 +73,15 @@ def generate_production_events(
                 minute = rng.randint(0, 59)
                 timestamp = day.replace(hour=hour, minute=minute, second=0)
 
-                # ~3% invalid timestamps: naive corruption (year 1900) to
-                # simulate a known sensor bug.
                 if rng.random() < 0.03:
                     timestamp = timestamp.replace(year=1900)
 
-                unit = "units" if rng.random() > 0.05 else "kg"  # ~5% wrong unit
+                unit = "units" if rng.random() > 0.05 else "kg"
                 quantity = rng.randint(50, 500)
 
                 events.append(
                     {
-                        "event_id": f"PE{event_counter:06d}",
+                        "event_id": f"{id_prefix}PE{event_counter:06d}",
                         "machine_id": machine["machine_id"],
                         "timestamp": timestamp.isoformat(),
                         "product_code": rng.choice(PRODUCT_CODES),
@@ -96,32 +92,29 @@ def generate_production_events(
                 )
                 event_counter += 1
 
-    # ~2% duplicate events: simulate a resend from the factory floor system.
     duplicates = [dict(e) for e in events if rng.random() < 0.02]
     events.extend(duplicates)
 
     return events
 
 
-def generate_quality_checks(rng: random.Random, production_events: list[dict]) -> list[dict]:
+def generate_quality_checks(
+    rng: random.Random, production_events: list[dict], id_prefix: str = ""
+) -> list[dict]:
     checks = []
     check_counter = 1
     inspectors = [f"INS{i:02d}" for i in range(1, 6)]
     for event in production_events:
-        # Not every event gets a quality check (~85% coverage), which is realistic
-        # and gives later "coverage" quality rules something to measure.
         if rng.random() > 0.85:
             continue
 
         result = "pass" if rng.random() > 0.1 else "fail"
         defect_type = rng.choice(DEFECT_TYPES) if result == "fail" else None
-
-        # ~2% of checks arrive with a null inspector, on purpose.
         inspector = rng.choice(inspectors) if rng.random() > 0.02 else None
 
         checks.append(
             {
-                "check_id": f"QC{check_counter:06d}",
+                "check_id": f"{id_prefix}QC{check_counter:06d}",
                 "production_event_id": event["event_id"],
                 "timestamp": event["timestamp"],
                 "result": result,
@@ -131,14 +124,11 @@ def generate_quality_checks(rng: random.Random, production_events: list[dict]) -
         )
         check_counter += 1
 
-    # Introduce a handful of orphan quality checks referencing a
-    # non-existent production event, to exercise foreign-key quality tests
-    # in later phases.
     for i in range(max(1, len(production_events) // 500)):
         checks.append(
             {
-                "check_id": f"QC-ORPHAN{i:03d}",
-                "production_event_id": "PE999999",
+                "check_id": f"{id_prefix}QC-ORPHAN{i:03d}",
+                "production_event_id": f"{id_prefix}PE999999",
                 "timestamp": production_events[0]["timestamp"] if production_events else None,
                 "result": "pass",
                 "defect_type": None,
@@ -150,7 +140,7 @@ def generate_quality_checks(rng: random.Random, production_events: list[dict]) -
 
 
 def generate_maintenance_events(
-    rng: random.Random, machines: list[dict], start_date: datetime, days: int
+    rng: random.Random, machines: list[dict], start_date: datetime, days: int, id_prefix: str = ""
 ) -> list[dict]:
     events = []
     counter = 1
@@ -163,7 +153,7 @@ def generate_maintenance_events(
             duration_hours = rng.randint(1, 6)
             events.append(
                 {
-                    "maintenance_id": f"MT{counter:05d}",
+                    "maintenance_id": f"{id_prefix}MT{counter:05d}",
                     "machine_id": machine["machine_id"],
                     "start_time": start.isoformat(),
                     "end_time": (start + timedelta(hours=duration_hours)).isoformat(),
@@ -181,22 +171,29 @@ def generate_dataset(
     n_machines: int = 5,
     events_per_day_per_machine: int = 20,
     start_date: datetime | None = None,
+    id_prefix: str = "",
 ) -> GeneratedDataset:
     """Generate a full, deterministic synthetic dataset.
 
-    Calling this twice with the same arguments always returns identical data:
-    every source of randomness goes through the single seeded `rng` instance,
-    and no wall-clock time or unseeded randomness is used anywhere.
+    id_prefix should be set to something unique (e.g. a run date) whenever
+    generate_dataset is called more than once against the same database:
+    event/check/maintenance IDs are otherwise only unique *within* one call,
+    and a second call's rows would collide with (and be silently skipped as
+    duplicates of) the first call's rows during ingestion. machine_id is
+    intentionally NOT prefixed — machines are stable physical equipment
+    referenced the same way on every run.
     """
     rng = random.Random(seed)
     start = start_date or datetime(2026, 1, 1)
 
     machines = generate_machines(rng, n_machines)
     production_events = generate_production_events(
-        rng, machines, start, days, events_per_day_per_machine
+        rng, machines, start, days, events_per_day_per_machine, id_prefix=id_prefix
     )
-    quality_checks = generate_quality_checks(rng, production_events)
-    maintenance_events = generate_maintenance_events(rng, machines, start, days)
+    quality_checks = generate_quality_checks(rng, production_events, id_prefix=id_prefix)
+    maintenance_events = generate_maintenance_events(
+        rng, machines, start, days, id_prefix=id_prefix
+    )
 
     return GeneratedDataset(
         machines=machines,
