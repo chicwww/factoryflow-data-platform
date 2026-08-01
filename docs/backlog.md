@@ -18,11 +18,11 @@ Status: Phase 1 in progress (initialization complete, generator not yet built).
 - [x] Structured logging in place (JSON lines via log_event)
 - [x] Python tests covering ingestion logic (6 tests, all passing, against real Postgres)
 
-## Phase 3 — dbt staging / intermediate / marts
-- [ ] Sources declared with descriptions
-- [ ] At least 15 relevant dbt tests across layers
-- [ ] dbt docs generate without errors
-
+## Phase 3 — dbt staging / intermediate / marts — COMPLETE
+- [x] Sources declared with descriptions
+- [x] At least 15 relevant dbt tests across layers (46 tests, all passing)
+- [x] dbt docs generate without errors
+      
 ## Phase 4 — Airflow orchestration
 - [ ] DAG covers: detect/generate file → ingest → dbt run → dbt test → scoring → publish
 - [ ] Retries and timeouts configured
