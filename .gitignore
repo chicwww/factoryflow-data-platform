@@ -2,3 +2,4 @@ dbt/.user.yml
 dbt/target/
 dbt/logs/
 .venv-dbt/
+__pycache__/
